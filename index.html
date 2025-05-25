@@ -279,9 +279,8 @@
         <div class="chat-header">
             <h1>Almassa IT AI Solution</h1>
             <div class="status-indicator">
-                
-                <span>Online</span>
                 <div class="online-dot"></div>
+                <span>متصل</span>
             </div>
         </div>
 
@@ -304,7 +303,7 @@
                 <textarea 
                     id="promptInput" 
                     rows="1"
-                    placeholder="Type Your Message..."
+                    placeholder="اكتب رسالتك..."
                 ></textarea>
                 <button id="sendButton">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -379,10 +378,8 @@
                 
                 messageDiv.innerHTML = formattedContent;
             } else {
-                // Format English content with proper line breaks
-                messageDiv.innerHTML = content
-                    .replace(/\n/g, '<br>')
-                    .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
+                // Format content with proper line breaks without any bolding
+                messageDiv.innerHTML = content.replace(/\n/g, '<br>');
             }
             
             chatMessages.appendChild(messageDiv);
@@ -423,7 +420,6 @@
 
             try {
                 let tmpPromptResponse = '';
-                let isArabicResponse = false;
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -449,36 +445,7 @@
                     const chunk = decoder.decode(value, { stream: true });
                     tmpPromptResponse += chunk;
                     
-                    // Check for Arabic characters in the response
-                    if (!isArabicResponse && /[\u0600-\u06FF]/.test(tmpPromptResponse)) {
-                        isArabicResponse = true;
-                        aiMessageDiv.classList.add('rtl');
-                    }
-                    
-                    // Update the message with formatted content
-                    if (isArabicResponse) {
-                        // Format Arabic response with beautiful bullets and paragraphs
-                        let formatted = tmpPromptResponse;
-                        // Convert numbered lists to bullet points
-                        formatted = formatted.replace(/\d+\.\s+(.*?)(?=\n\d+\.|\n\n|$)/gs, '<li>$1</li>');
-                        if (formatted.includes('<li>')) {
-                            formatted = formatted.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
-                        }
-                        formatted = formatted.split('\n\n').map(para => {
-                            if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
-                                para = para.replace(/\n/g, '<br>');
-                                return `<p>${para}</p>`;
-                            }
-                            return para;
-                        }).join('');
-                        aiMessageDiv.innerHTML = formatted;
-                    } else {
-                        // Format English response with line breaks and bold
-                        aiMessageDiv.innerHTML = tmpPromptResponse
-                            .replace(/\n/g, '<br>')
-                            .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
-                    }
-                    
+                    aiMessageDiv.innerHTML = tmpPromptResponse.replace(/\n/g, '<br>');
                     messagesEndRef.scrollIntoView({ behavior: 'smooth' });
                 }
 
