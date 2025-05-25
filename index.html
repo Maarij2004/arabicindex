@@ -261,6 +261,33 @@
             line-height: 1.6;
         }
 
+        /* English message styling */
+        .ai-message.ltr ul {
+            padding-left: 20px;
+            list-style-type: none;
+            margin-bottom: 10px;
+        }
+
+        .ai-message.ltr li {
+            margin-bottom: 8px;
+            padding-left: 15px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .ai-message.ltr li:before {
+            content: "•";
+            color: #C04848;
+            font-size: 1.2em;
+            position: absolute;
+            left: 0;
+        }
+
+        .ai-message.ltr p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
         @media (max-width: 600px) {
             .chat-container {
                 height: 100vh;
@@ -345,9 +372,32 @@
 
         sendButton.addEventListener('click', handleSubmit);
 
+        function cleanEnglishText(text) {
+            // Remove markdown-style bold/italic formatting
+            text = text.replace(/\*\*/g, '');
+            text = text.replace(/\*/g, '');
+            text = text.replace(/_/g, '');
+            text = text.replace(/`/g, '');
+            text = text.replace(/#/g, '');
+            
+            // Remove any remaining markdown headers
+            text = text.replace(/^#+\s+/gm, '');
+            
+            // Clean up numbered lists
+            text = text.replace(/^\d+\.\s+/gm, '• ');
+            
+            // Remove excessive line breaks
+            text = text.replace(/\n{3,}/g, '\n\n');
+            
+            // Trim whitespace
+            text = text.trim();
+            
+            return text;
+        }
+
         function createMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = message ${isUser ? 'user-message' : 'ai-message'};
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             
             // Detect if content is Arabic (contains Arabic characters)
             const isArabic = /[\u0600-\u06FF]/.test(content);
@@ -371,14 +421,38 @@
                     if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
                         // Replace remaining single newlines with <br>
                         para = para.replace(/\n/g, '<br>');
-                        return <p>${para}</p>;
+                        return `<p>${para}</p>`;
                     }
                     return para;
                 }).join(''); 
                 
                 messageDiv.innerHTML = formattedContent;
+            } else if (!isUser) {
+                // For English AI messages, clean the text first
+                messageDiv.classList.add('ltr');
+                let cleanedContent = cleanEnglishText(content);
+                
+                // Format lists
+                cleanedContent = cleanedContent.replace(/•\s+(.*?)(?=\n•|\n\n|$)/gs, '<li>$1</li>');
+                
+                // If we found list items, wrap in ul
+                if (cleanedContent.includes('<li>')) {
+                    cleanedContent = cleanedContent.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+                }
+                
+                // Format paragraphs
+                cleanedContent = cleanedContent.split('\n\n').map(para => {
+                    if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                        // Replace remaining single newlines with <br>
+                        para = para.replace(/\n/g, '<br>');
+                        return `<p>${para}</p>`;
+                    }
+                    return para;
+                }).join('');
+                
+                messageDiv.innerHTML = cleanedContent;
             } else {
-                // Format content with proper line breaks without any bolding
+                // For user messages (both languages), just replace line breaks
                 messageDiv.innerHTML = content.replace(/\n/g, '<br>');
             }
             
@@ -410,9 +484,9 @@
             promptInput.style.height = 'auto';
             sendButton.disabled = true;
             sendButton.innerHTML = 
-                <span class="loading-dots">
+                `<span class="loading-dots">
                     <span>.</span><span>.</span><span>.</span>
-                </span>
+                </span>`
             ;
 
             // Show typing indicator
@@ -436,6 +510,15 @@
                 // Create AI message container
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = 'message ai-message';
+                
+                // Detect if prompt is Arabic to set direction early
+                const isArabic = /[\u0600-\u06FF]/.test(prompt);
+                if (isArabic) {
+                    aiMessageDiv.classList.add('rtl');
+                } else {
+                    aiMessageDiv.classList.add('ltr');
+                }
+                
                 chatMessages.appendChild(aiMessageDiv);
 
                 while (true) {
@@ -445,8 +528,47 @@
                     const chunk = decoder.decode(value, { stream: true });
                     tmpPromptResponse += chunk;
                     
-                    aiMessageDiv.innerHTML = tmpPromptResponse.replace(/\n/g, '<br>');
+                    // Apply cleaning only for English responses
+                    if (!isArabic) {
+                        const cleanedChunk = cleanEnglishText(tmpPromptResponse);
+                        aiMessageDiv.innerHTML = cleanedChunk.replace(/\n/g, '<br>');
+                    } else {
+                        aiMessageDiv.innerHTML = tmpPromptResponse.replace(/\n/g, '<br>');
+                    }
                     messagesEndRef.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                // Final formatting after complete response is received
+                if (isArabic) {
+                    // Format Arabic content with proper paragraphs and lists
+                    let formattedContent = tmpPromptResponse;
+                    formattedContent = formattedContent.replace(/\d+\.\s+(.*?)(?=\n\d+\.|\n\n|$)/gs, '<li>$1</li>');
+                    if (formattedContent.includes('<li>')) {
+                        formattedContent = formattedContent.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+                    }
+                    formattedContent = formattedContent.split('\n\n').map(para => {
+                        if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                            para = para.replace(/\n/g, '<br>');
+                            return `<p>${para}</p>`;
+                        }
+                        return para;
+                    }).join('');
+                    aiMessageDiv.innerHTML = formattedContent;
+                } else {
+                    // Format English content with proper paragraphs and lists
+                    let cleanedContent = cleanEnglishText(tmpPromptResponse);
+                    cleanedContent = cleanedContent.replace(/•\s+(.*?)(?=\n•|\n\n|$)/gs, '<li>$1</li>');
+                    if (cleanedContent.includes('<li>')) {
+                        cleanedContent = cleanedContent.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+                    }
+                    cleanedContent = cleanedContent.split('\n\n').map(para => {
+                        if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                            para = para.replace(/\n/g, '<br>');
+                            return `<p>${para}</p>`;
+                        }
+                        return para;
+                    }).join('');
+                    aiMessageDiv.innerHTML = cleanedContent;
                 }
 
                 // Add to chat history
@@ -459,10 +581,10 @@
                 // Re-enable button
                 sendButton.disabled = false;
                 sendButton.innerHTML = 
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                         <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    </svg>`
                 ;
                 hideTyping();
                 promptInput.focus();
