@@ -107,29 +107,6 @@
             direction: rtl;
         }
 
-        .ai-message h3 {
-            margin: 8px 0;
-            font-size: 16px;
-            color: #C04848;
-        }
-
-        .ai-message strong {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .ai-message em {
-            font-style: italic;
-        }
-
-        .ai-message ol, .ai-message ul {
-            margin: 8px 0 8px 20px;
-        }
-
-        .ai-message li {
-            margin-bottom: 4px;
-        }
-
         .chat-input-container {
             padding: 16px;
             background: #fff;
@@ -181,6 +158,9 @@
             font-size: 14px;
             font-weight: 500;
             transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #sendButton:hover:not(:disabled) {
@@ -190,6 +170,28 @@
         #sendButton:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0.2; }
+            40% { opacity: 1; }
         }
 
         .typing-indicator {
@@ -232,7 +234,7 @@
             }
         }
 
-     @media (max-width: 600px) {
+        @media (max-width: 600px) {
             .chat-container {
                 height: 100vh;
                 border-radius: 0;
@@ -242,9 +244,7 @@
             .message {
                 max-width: 90%;
             }
-     }
-}
-
+        }
     </style>
 </head>
 <body>
@@ -259,9 +259,7 @@
 
         <div class="chat-messages" id="chatMessages">
             <div class="ai-message message">
-                <strong>Welcome to Almassa IT Solutions!</strong><br><br>
-                I'm your AI assistant here to help with information about our services and solutions.<br><br>
-                You can use English or Arabic for communication.
+                Hello! How can I assist you today?
             </div>
         </div>
 
@@ -280,17 +278,29 @@
                     rows="1"
                     placeholder="Type your message..."
                 ></textarea>
-                <button id="sendButton">Send</button>
+                <button id="sendButton">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
 
     <script>
         const API_URL = 'https://web-production-9fa4.up.railway.app/api/prompt';
+        
         const chatMessages = document.getElementById('chatMessages');
         const promptInput = document.getElementById('promptInput');
         const sendButton = document.getElementById('sendButton');
         const typingIndicator = document.getElementById('typingIndicator');
+        const messagesEndRef = document.createElement('div');
+
+        // Initialize chat history
+        let chatHistory = [
+            { sender: 'ai', message: 'Hello! How can I assist you today?' }
+        ];
 
         // Auto-resize textarea
         promptInput.addEventListener('input', function() {
@@ -302,102 +312,25 @@
         promptInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                handleSubmit();
             }
         });
 
-        sendButton.addEventListener('click', sendMessage);
+        sendButton.addEventListener('click', handleSubmit);
 
-        function createStructuredMessage(content, isUser = false) {
+        function createMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             
-            // Format the content if it's from the AI
-            if (!isUser) {
-                messageDiv.innerHTML = formatContent(content);
-                
-                // Check if the response is in Arabic and apply RTL styling
-                if (isArabic(content)) {
-                    messageDiv.classList.add('rtl');
-                    
-                    // Clean any remaining English words (only allow company contact info)
-                    messageDiv.innerHTML = cleanArabicResponse(messageDiv.innerHTML);
-                }
-            } else {
-                messageDiv.textContent = content;
-            }
+            // Set content as HTML (sanitized in production)
+            messageDiv.innerHTML = content
+                .replace(/\n/g, '<br>')
+                .replace(/\*/g, '');
             
             chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatMessages.appendChild(messagesEndRef);
+            messagesEndRef.scrollIntoView({ behavior: 'smooth' });
             return messageDiv;
-        }
-
-        function cleanArabicResponse(text) {
-            // Patterns to keep (company email, phone, website only)
-            const allowedPatterns = [
-                /[\w.-]+@almassa\.\w+/gi, // company emails only
-                /(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/g, // phone numbers
-                /(?:https?:\/\/)?(?:www\.)?almassa\.\w+(?:\/\S*)?/gi // company website only
-            ];
-            
-            // Find all allowed patterns in the text
-            const allowedMatches = [];
-            allowedPatterns.forEach(pattern => {
-                let match;
-                while ((match = pattern.exec(text)) !== null) {
-                    allowedMatches.push(match[0]);
-                }
-            });
-            
-            // Replace allowed patterns with placeholders
-            let cleanedText = text;
-            allowedMatches.forEach((match, index) => {
-                cleanedText = cleanedText.replace(match, `__ALLOWED_${index}__`);
-            });
-            
-            // Remove all remaining English characters, symbols, and words
-            cleanedText = cleanedText.replace(/[a-zA-Z0-9!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?~`-]/g, '');
-            
-            // Restore allowed patterns
-            allowedMatches.forEach((match, index) => {
-                cleanedText = cleanedText.replace(`__ALLOWED_${index}__`, match);
-            });
-            
-            // Remove any resulting double spaces
-            cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
-            
-            return cleanedText;
-        }
-
-        function formatContent(text) {
-            // Replace markdown with HTML
-            let formatted = text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // bold
-                .replace(/\*(.*?)\*/g, '<em>$1</em>') // italic
-                .replace(/## (.*?)(\n|$)/g, '<h3>$1</h3>') // headings
-                .replace(/\n/g, '<br>'); // line breaks
-            
-            // Format numbered lists
-            formatted = formatted.replace(/(\d+\. .*?(<br>|$))/g, '<li>$1</li>');
-            formatted = formatted.replace(/<li>(\d+\. )/g, '<li>');
-            
-            // Format bullet lists
-            formatted = formatted.replace(/(• |\- )(.*?)(<br>|$)/g, '<li>$2</li>');
-            
-            // Wrap lists in ul/ol
-            if (formatted.includes('<li>')) {
-                if (formatted.match(/\d+\. /)) {
-                    formatted = formatted.replace(/(<li>.*?<\/li>(<br>)?)+/g, function(match) {
-                        return '<ol>' + match.replace(/<br>/g, '') + '</ol>';
-                    });
-                } else {
-                    formatted = formatted.replace(/(<li>.*?<\/li>(<br>)?)+/g, function(match) {
-                        return '<ul>' + match.replace(/<br>/g, '') + '</ul>';
-                    });
-                }
-            }
-            
-            return formatted;
         }
 
         function showTyping() {
@@ -409,86 +342,78 @@
             typingIndicator.classList.remove('active');
         }
 
-        function isArabic(text) {
-            // Regular expression to match Arabic characters
-            const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-            return arabicRegex.test(text);
-        }
-
-        async function sendMessage() {
+        async function handleSubmit() {
             const prompt = promptInput.value.trim();
             if (!prompt) return;
 
             // Add user message
-            createStructuredMessage(prompt, true);
+            createMessage(prompt, true);
+            chatHistory.push({ sender: 'user', message: prompt });
 
             // Clear input and disable button
             promptInput.value = '';
             promptInput.style.height = 'auto';
             sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
+            sendButton.innerHTML = `
+                <span class="loading-dots">
+                    <span>.</span><span>.</span><span>.</span>
+                </span>
+            `;
 
             // Show typing indicator
             showTyping();
 
             try {
+                let tmpPromptResponse = '';
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ 
-                        prompt,
-                        format: 'structured',
-                        language: isArabic(prompt) ? 'pure-arabic' : 'english'
-                    })
+                    body: JSON.stringify({ prompt })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.body) throw new Error('No response body');
 
-                // Hide typing indicator and create AI message container
-                hideTyping();
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                // Create AI message container
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = 'message ai-message';
                 chatMessages.appendChild(aiMessageDiv);
 
-                // Read the stream
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullResponse = '';
-
                 while (true) {
-                    const { done, value } = await reader.read();
+                    const { value, done } = await reader.read();
                     if (done) break;
 
                     const chunk = decoder.decode(value, { stream: true });
-                    fullResponse += chunk;
+                    tmpPromptResponse += chunk;
                     
                     // Update the message with formatted content
-                    aiMessageDiv.innerHTML = formatContent(fullResponse);
+                    aiMessageDiv.innerHTML = tmpPromptResponse
+                        .replace(/\n/g, '<br>')
+                        .replace(/\*/g, '');
                     
-                    // Check if the response is in Arabic and apply RTL styling
-                    if (isArabic(fullResponse)) {
-                        aiMessageDiv.classList.add('rtl');
-                        // Clean any remaining English words (only allow company contact info)
-                        aiMessageDiv.innerHTML = cleanArabicResponse(aiMessageDiv.innerHTML);
-                    } else {
-                        aiMessageDiv.classList.remove('rtl');
-                    }
-                    
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    messagesEndRef.scrollIntoView({ behavior: 'smooth' });
                 }
 
+                // Add to chat history
+                chatHistory.push({ sender: 'ai', message: tmpPromptResponse });
+
             } catch (error) {
-                hideTyping();
                 console.error('Error:', error);
-                createStructuredMessage('Sorry, there was an error processing your request. Please try again.');
+                createMessage('Error communicating with the server.');
             } finally {
                 // Re-enable button
                 sendButton.disabled = false;
-                sendButton.textContent = 'Send';
+                sendButton.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                hideTyping();
                 promptInput.focus();
             }
         }
