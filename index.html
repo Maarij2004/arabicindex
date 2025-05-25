@@ -237,16 +237,28 @@
         /* Arabic message styling */
         .ai-message.rtl ul {
             padding-right: 20px;
-            list-style-type: disc;
+            list-style-type: none;
             margin-bottom: 10px;
         }
 
         .ai-message.rtl li {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            padding-right: 15px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .ai-message.rtl li:before {
+            content: "•";
+            color: #C04848;
+            font-size: 1.2em;
+            position: absolute;
+            right: 0;
         }
 
         .ai-message.rtl p {
             margin-bottom: 10px;
+            line-height: 1.6;
         }
 
         @media (max-width: 600px) {
@@ -343,20 +355,22 @@
             if (isArabic && !isUser) {
                 messageDiv.classList.add('rtl');
                 
-                // Format Arabic content with bullets and proper line breaks
+                // Format Arabic content with beautiful bullets and proper line breaks
                 let formattedContent = content;
                 
-                // Convert asterisks to bullet points
-                formattedContent = formattedContent.replace(/\*\s*(.*?)\s*\*/g, '<li>$1</li>');
+                // Convert numbered lists to beautiful bullet points
+                formattedContent = formattedContent.replace(/\d+\.\s+(.*?)(?=\n\d+\.|\n\n|$)/gs, '<li>$1</li>');
                 
                 // If we found list items, wrap in ul
                 if (formattedContent.includes('<li>')) {
-                    formattedContent = formattedContent.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+                    formattedContent = formattedContent.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
                 }
                 
-                // Replace line breaks with paragraphs
+                // Replace single line breaks with <br> and double line breaks with paragraphs
                 formattedContent = formattedContent.split('\n\n').map(para => {
                     if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                        // Replace remaining single newlines with <br>
+                        para = para.replace(/\n/g, '<br>');
                         return `<p>${para}</p>`;
                     }
                     return para;
@@ -408,6 +422,7 @@
 
             try {
                 let tmpPromptResponse = '';
+                let isArabicResponse = false;
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -424,10 +439,6 @@
                 // Create AI message container
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = 'message ai-message';
-                
-                // Detect if response is likely Arabic (we'll update this as we get chunks)
-                let isArabicResponse = false;
-                
                 chatMessages.appendChild(aiMessageDiv);
 
                 while (true) {
@@ -445,14 +456,16 @@
                     
                     // Update the message with formatted content
                     if (isArabicResponse) {
-                        // Format Arabic response with bullets and paragraphs
+                        // Format Arabic response with beautiful bullets and paragraphs
                         let formatted = tmpPromptResponse;
-                        formatted = formatted.replace(/\*\s*(.*?)\s*\*/g, '<li>$1</li>');
+                        // Convert numbered lists to bullet points
+                        formatted = formatted.replace(/\d+\.\s+(.*?)(?=\n\d+\.|\n\n|$)/gs, '<li>$1</li>');
                         if (formatted.includes('<li>')) {
-                            formatted = formatted.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+                            formatted = formatted.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
                         }
                         formatted = formatted.split('\n\n').map(para => {
                             if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                                para = para.replace(/\n/g, '<br>');
                                 return `<p>${para}</p>`;
                             }
                             return para;
