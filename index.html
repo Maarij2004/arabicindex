@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Almassali AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #480048 0%, #480048 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .chat-container {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 420px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #C04848;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .chat-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #e9ecef;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.4;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .user-message {
+            background: #C04848;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+            border-bottom-right-radius: 0;
+        }
+
+        .ai-message {
+            background: #f1f1f1;
+            color: #333;
+            border: 1px solid #e9ecef;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+            text-align: left;
+        }
+
+        .ai-message.rtl {
+            text-align: right;
+            direction: rtl;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            background: #fff;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        #promptInput {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            resize: none;
+            min-height: 40px;
+            max-height: 100px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        #promptInput::placeholder {
+            color: #999;
+            text-align: center;
+        }
+
+        #promptInput:focus {
+            border-color: #C04848;
+            background: white;
+        }
+
+        #promptInput:focus::placeholder {
+            color: transparent;
+        }
+
+        #sendButton {
+            background: #C04848;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            background: #C04848;
+        }
+
+        #sendButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid #e9ecef;
+            max-width: 80%;
+            margin-right: auto;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #C04848;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>Almassa IT AI Assistant</h1>
+            <div class="status-indicator">
+                <div class="online-dot"></div>
+                <span>Online</span>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="ai-message message">
+                Hello! How can I assist you today?<br>
+                You can use English or Arabic language for communication.
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="input-group">
+                <textarea 
+                    id="promptInput" 
+                    rows="1"
+                    placeholder="Type your message..."
+                ></textarea>
+                <button id="sendButton">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://web-production-9fa4.up.railway.app/api/prompt';
+        const chatMessages = document.getElementById('chatMessages');
+        const promptInput = document.getElementById('promptInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // Auto-resize textarea
+        promptInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Send message on Enter (but allow Shift+Enter for new line)
+        promptInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTyping() {
+            typingIndicator.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            typingIndicator.classList.remove('active');
+        }
+
+        function isArabic(text) {
+            // Regular expression to match Arabic characters
+            const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+            return arabicRegex.test(text);
+        }
+
+        async function sendMessage() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            // Add user message
+            addMessage(prompt, true);
+
+            // Clear input and disable button
+            promptInput.value = '';
+            promptInput.style.height = 'auto';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+
+            // Show typing indicator
+            showTyping();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // Hide typing indicator and create AI message container
+                hideTyping();
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = 'message ai-message';
+                chatMessages.appendChild(aiMessageDiv);
+
+                // Read the stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullResponse += chunk;
+                    aiMessageDiv.textContent = fullResponse;
+                    
+                    // Check if the response is in Arabic and apply RTL styling
+                    if (isArabic(fullResponse)) {
+                        aiMessageDiv.classList.add('rtl');
+                    } else {
+                        aiMessageDiv.classList.remove('rtl');
+                    }
+                    
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+
+            } catch (error) {
+                hideTyping();
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request. Please try again.');
+            } finally {
+                // Re-enable button
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                promptInput.focus();
+            }
+        }
+
+        // Focus on input when page loads
+        window.addEventListener('load', () => {
+            promptInput.focus();
+        });
+    </script>
+</body>
+</html>
