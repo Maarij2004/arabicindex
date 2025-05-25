@@ -232,17 +232,53 @@
             }
         }
 
-        @media (max-width: 600px) {
-            .chat-container {
-                height: 100vh;
-                border-radius: 0;
-                max-width: 100%;
-            }
+      @media (max-width: 600px) {
+    .chat-container {
+        height: 100vh;           /* Full viewport height */
+        border-radius: 0;        /* Remove rounded corners */
+        max-width: 100%;         /* Ensure container takes up full width */
+        padding: 10px;           /* Add padding to avoid content touching the edges */
+    }
 
-            .message {
-                max-width: 90%;
-            }
-        }
+    .chat-header {
+        font-size: 18px;         /* Reduce font size for mobile */
+        padding: 10px;           /* Adjust padding for better space */
+    }
+
+    .message {
+        max-width: 90%;          /* Limit message width to 90% */
+        font-size: 14px;         /* Adjust font size for readability */
+        padding: 8px 12px;       /* Reduce padding to make messages fit better */
+        line-height: 1.4;        /* Improve line spacing for readability */
+    }
+
+    .user-message, .ai-message {
+        font-size: 14px;         /* Ensure message font size is consistent */
+        padding: 8px 12px;       /* Adjust padding for compactness */
+    }
+
+    #promptInput {
+        font-size: 14px;         /* Smaller input font size for mobile */
+        padding: 12px 14px;      /* Ensure padding is appropriate for mobile typing */
+        min-height: 40px;        /* Set a minimum height for the input area */
+        max-height: 80px;        /* Limit height for better control */
+    }
+
+    #sendButton {
+        padding: 8px 16px;       /* Adjust button padding */
+        font-size: 14px;         /* Smaller button text for mobile */
+    }
+
+    .typing-indicator {
+        padding: 8px 12px;       /* Adjust indicator padding for mobile */
+    }
+
+    .input-group {
+        flex-direction: column;  /* Stack input and button vertically on mobile */
+        gap: 10px;               /* Add spacing between input and button */
+    }
+}
+
     </style>
 </head>
 <body>
