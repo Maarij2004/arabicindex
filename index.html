@@ -234,6 +234,21 @@
             }
         }
 
+        /* Arabic message styling */
+        .ai-message.rtl ul {
+            padding-right: 20px;
+            list-style-type: disc;
+            margin-bottom: 10px;
+        }
+
+        .ai-message.rtl li {
+            margin-bottom: 5px;
+        }
+
+        .ai-message.rtl p {
+            margin-bottom: 10px;
+        }
+
         @media (max-width: 600px) {
             .chat-container {
                 height: 100vh;
@@ -322,10 +337,38 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             
-            // Set content as HTML (sanitized in production)
-            messageDiv.innerHTML = content
-                .replace(/\n/g, '<br>')
-                .replace(/\*/g, '');
+            // Detect if content is Arabic (contains Arabic characters)
+            const isArabic = /[\u0600-\u06FF]/.test(content);
+            
+            if (isArabic && !isUser) {
+                messageDiv.classList.add('rtl');
+                
+                // Format Arabic content with bullets and proper line breaks
+                let formattedContent = content;
+                
+                // Convert asterisks to bullet points
+                formattedContent = formattedContent.replace(/\*\s*(.*?)\s*\*/g, '<li>$1</li>');
+                
+                // If we found list items, wrap in ul
+                if (formattedContent.includes('<li>')) {
+                    formattedContent = formattedContent.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+                }
+                
+                // Replace line breaks with paragraphs
+                formattedContent = formattedContent.split('\n\n').map(para => {
+                    if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                        return `<p>${para}</p>`;
+                    }
+                    return para;
+                }).join('');
+                
+                messageDiv.innerHTML = formattedContent;
+            } else {
+                // Format English content with proper line breaks
+                messageDiv.innerHTML = content
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
+            }
             
             chatMessages.appendChild(messageDiv);
             chatMessages.appendChild(messagesEndRef);
@@ -381,6 +424,10 @@
                 // Create AI message container
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = 'message ai-message';
+                
+                // Detect if response is likely Arabic (we'll update this as we get chunks)
+                let isArabicResponse = false;
+                
                 chatMessages.appendChild(aiMessageDiv);
 
                 while (true) {
@@ -390,10 +437,33 @@
                     const chunk = decoder.decode(value, { stream: true });
                     tmpPromptResponse += chunk;
                     
+                    // Check for Arabic characters in the response
+                    if (!isArabicResponse && /[\u0600-\u06FF]/.test(tmpPromptResponse)) {
+                        isArabicResponse = true;
+                        aiMessageDiv.classList.add('rtl');
+                    }
+                    
                     // Update the message with formatted content
-                    aiMessageDiv.innerHTML = tmpPromptResponse
-                        .replace(/\n/g, '<br>')
-                        .replace(/\*/g, '');
+                    if (isArabicResponse) {
+                        // Format Arabic response with bullets and paragraphs
+                        let formatted = tmpPromptResponse;
+                        formatted = formatted.replace(/\*\s*(.*?)\s*\*/g, '<li>$1</li>');
+                        if (formatted.includes('<li>')) {
+                            formatted = formatted.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+                        }
+                        formatted = formatted.split('\n\n').map(para => {
+                            if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                                return `<p>${para}</p>`;
+                            }
+                            return para;
+                        }).join('');
+                        aiMessageDiv.innerHTML = formatted;
+                    } else {
+                        // Format English response with line breaks and bold
+                        aiMessageDiv.innerHTML = tmpPromptResponse
+                            .replace(/\n/g, '<br>')
+                            .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
+                    }
                     
                     messagesEndRef.scrollIntoView({ behavior: 'smooth' });
                 }
