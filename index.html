@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Almassali AI Assistant</title>
+    <title>Almassa AI Assistant</title>
     <style>
         * {
             margin: 0;
@@ -76,11 +76,11 @@
         }
 
         .message {
-            padding: 10px 14px;
+            padding: 12px 16px;
             border-radius: 12px;
-            max-width: 80%;
+            max-width: 85%;
             word-wrap: break-word;
-            line-height: 1.4;
+            line-height: 1.5;
             font-size: 14px;
             position: relative;
         }
@@ -105,6 +105,29 @@
         .ai-message.rtl {
             text-align: right;
             direction: rtl;
+        }
+
+        .ai-message h3 {
+            margin: 8px 0;
+            font-size: 16px;
+            color: #C04848;
+        }
+
+        .ai-message strong {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ai-message em {
+            font-style: italic;
+        }
+
+        .ai-message ol, .ai-message ul {
+            margin: 8px 0 8px 20px;
+        }
+
+        .ai-message li {
+            margin-bottom: 4px;
         }
 
         .chat-input-container {
@@ -161,7 +184,7 @@
         }
 
         #sendButton:hover:not(:disabled) {
-            background: #C04848;
+            background: #a03838;
         }
 
         #sendButton:disabled {
@@ -213,7 +236,7 @@
             .chat-container {
                 height: 100vh;
                 border-radius: 0;
-                max-width: 100%;
+                max-width: 80%;
             }
 
             .message {
@@ -234,8 +257,9 @@
 
         <div class="chat-messages" id="chatMessages">
             <div class="ai-message message">
-                Hello! How can I assist you today?<br>
-                You can use English or Arabic language for communication.
+                <strong>Welcome to Almassa IT Solutions!</strong><br><br>
+                I'm your AI assistant here to help with information about our services and solutions.<br><br>
+                You can use English or Arabic for communication.
             </div>
         </div>
 
@@ -282,12 +306,56 @@
 
         sendButton.addEventListener('click', sendMessage);
 
-        function addMessage(content, isUser = false) {
+        function createStructuredMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-            messageDiv.textContent = content;
+            
+            // Format the content if it's from the AI
+            if (!isUser) {
+                messageDiv.innerHTML = formatContent(content);
+                
+                // Check if the response is in Arabic and apply RTL styling
+                if (isArabic(content)) {
+                    messageDiv.classList.add('rtl');
+                }
+            } else {
+                messageDiv.textContent = content;
+            }
+            
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function formatContent(text) {
+            // Replace markdown with HTML
+            let formatted = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>') // italic
+                .replace(/## (.*?)(\n|$)/g, '<h3>$1</h3>') // headings
+                .replace(/\n/g, '<br>'); // line breaks
+            
+            // Format numbered lists
+            formatted = formatted.replace(/(\d+\. .*?(<br>|$))/g, '<li>$1</li>');
+            formatted = formatted.replace(/<li>(\d+\. )/g, '<li>');
+            
+            // Format bullet lists
+            formatted = formatted.replace(/(• |\- )(.*?)(<br>|$)/g, '<li>$2</li>');
+            
+            // Wrap lists in ul/ol
+            if (formatted.includes('<li>')) {
+                if (formatted.match(/\d+\. /)) {
+                    formatted = formatted.replace(/(<li>.*?<\/li>(<br>)?)+/g, function(match) {
+                        return '<ol>' + match.replace(/<br>/g, '') + '</ol>';
+                    });
+                } else {
+                    formatted = formatted.replace(/(<li>.*?<\/li>(<br>)?)+/g, function(match) {
+                        return '<ul>' + match.replace(/<br>/g, '') + '</ul>';
+                    });
+                }
+            }
+            
+            return formatted;
         }
 
         function showTyping() {
@@ -310,7 +378,7 @@
             if (!prompt) return;
 
             // Add user message
-            addMessage(prompt, true);
+            createStructuredMessage(prompt, true);
 
             // Clear input and disable button
             promptInput.value = '';
@@ -327,7 +395,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ prompt })
+                    body: JSON.stringify({ 
+                        prompt,
+                        format: 'structured' // Tell the API you want structured response
+                    })
                 });
 
                 if (!response.ok) {
@@ -351,7 +422,9 @@
 
                     const chunk = decoder.decode(value, { stream: true });
                     fullResponse += chunk;
-                    aiMessageDiv.textContent = fullResponse;
+                    
+                    // Update the message with formatted content
+                    aiMessageDiv.innerHTML = formatContent(fullResponse);
                     
                     // Check if the response is in Arabic and apply RTL styling
                     if (isArabic(fullResponse)) {
@@ -366,7 +439,7 @@
             } catch (error) {
                 hideTyping();
                 console.error('Error:', error);
-                addMessage('Sorry, there was an error processing your request. Please try again.');
+                createStructuredMessage('Sorry, there was an error processing your request. Please try again.');
             } finally {
                 // Re-enable button
                 sendButton.disabled = false;
