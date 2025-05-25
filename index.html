@@ -320,7 +320,7 @@
                 if (isArabic(content)) {
                     messageDiv.classList.add('rtl');
                     
-                    // Clean any remaining English words (except allowed patterns)
+                    // Clean any remaining English words (only allow company contact info)
                     messageDiv.innerHTML = cleanArabicResponse(messageDiv.innerHTML);
                 }
             } else {
@@ -333,11 +333,11 @@
         }
 
         function cleanArabicResponse(text) {
-            // Patterns to keep (email, phone, websites, etc.)
+            // Patterns to keep (company email, phone, website only)
             const allowedPatterns = [
-                /[\w.-]+@[\w.-]+\.\w+/g, // emails
+                /[\w.-]+@almassa\.\w+/gi, // company emails only
                 /(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/g, // phone numbers
-                /(?:https?:\/\/)?(?:www\.)?[\w.-]+\.[a-z]{2,}(?:\/\S*)?/gi // websites
+                /(?:https?:\/\/)?(?:www\.)?almassa\.\w+(?:\/\S*)?/gi // company website only
             ];
             
             // Find all allowed patterns in the text
@@ -349,19 +349,22 @@
                 }
             });
             
-            // Replace English words but preserve allowed patterns
+            // Replace allowed patterns with placeholders
             let cleanedText = text;
-            allowedMatches.forEach(match => {
-                cleanedText = cleanedText.replace(match, `{{${match}}}`);
+            allowedMatches.forEach((match, index) => {
+                cleanedText = cleanedText.replace(match, `__ALLOWED_${index}__`);
             });
             
-            // Remove remaining English words (basic Latin alphabet)
-            cleanedText = cleanedText.replace(/[a-zA-Z]+/g, '');
+            // Remove all remaining English characters, symbols, and words
+            cleanedText = cleanedText.replace(/[a-zA-Z0-9!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?~`-]/g, '');
             
             // Restore allowed patterns
-            allowedMatches.forEach(match => {
-                cleanedText = cleanedText.replace(`{{${match}}}`, match);
+            allowedMatches.forEach((match, index) => {
+                cleanedText = cleanedText.replace(`__ALLOWED_${index}__`, match);
             });
+            
+            // Remove any resulting double spaces
+            cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
             
             return cleanedText;
         }
@@ -436,8 +439,8 @@
                     },
                     body: JSON.stringify({ 
                         prompt,
-                        format: 'structured', // Tell the API you want structured response
-                        language: isArabic(prompt) ? 'arabic' : 'english' // Tell API to respond in Arabic if prompt is Arabic
+                        format: 'structured',
+                        language: isArabic(prompt) ? 'pure-arabic' : 'english'
                     })
                 });
 
@@ -469,7 +472,7 @@
                     // Check if the response is in Arabic and apply RTL styling
                     if (isArabic(fullResponse)) {
                         aiMessageDiv.classList.add('rtl');
-                        // Clean any remaining English words (except allowed patterns)
+                        // Clean any remaining English words (only allow company contact info)
                         aiMessageDiv.innerHTML = cleanArabicResponse(aiMessageDiv.innerHTML);
                     } else {
                         aiMessageDiv.classList.remove('rtl');
