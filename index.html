@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Almassa IT AI Solution</title>
+    <title>مساعد الذكاء الاصطناعي ألمسة</title>
     <style>
-        .no-asterisk {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -277,7 +277,7 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h1>Almassa IT AI Solution</h1>
+            <h1>مساعد الذكاء الاصطناعي ألمسة</h1>
             <div class="status-indicator">
                 <div class="online-dot"></div>
                 <span>متصل</span>
@@ -378,8 +378,10 @@
                 
                 messageDiv.innerHTML = formattedContent;
             } else {
-                // Format content with proper line breaks and no asterisks or bold formatting
-                messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+                // Format English content with proper line breaks
+                messageDiv.innerHTML = content
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
             }
             
             chatMessages.appendChild(messageDiv);
@@ -420,6 +422,7 @@
 
             try {
                 let tmpPromptResponse = '';
+                let isArabicResponse = false;
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -445,7 +448,36 @@
                     const chunk = decoder.decode(value, { stream: true });
                     tmpPromptResponse += chunk;
                     
-                    aiMessageDiv.innerHTML = tmpPromptResponse.replace(/\n/g, '<br>');
+                    // Check for Arabic characters in the response
+                    if (!isArabicResponse && /[\u0600-\u06FF]/.test(tmpPromptResponse)) {
+                        isArabicResponse = true;
+                        aiMessageDiv.classList.add('rtl');
+                    }
+                    
+                    // Update the message with formatted content
+                    if (isArabicResponse) {
+                        // Format Arabic response with beautiful bullets and paragraphs
+                        let formatted = tmpPromptResponse;
+                        // Convert numbered lists to bullet points
+                        formatted = formatted.replace(/\d+\.\s+(.*?)(?=\n\d+\.|\n\n|$)/gs, '<li>$1</li>');
+                        if (formatted.includes('<li>')) {
+                            formatted = formatted.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+                        }
+                        formatted = formatted.split('\n\n').map(para => {
+                            if (!para.startsWith('<ul>') && !para.endsWith('</ul>')) {
+                                para = para.replace(/\n/g, '<br>');
+                                return `<p>${para}</p>`;
+                            }
+                            return para;
+                        }).join('');
+                        aiMessageDiv.innerHTML = formatted;
+                    } else {
+                        // Format English response with line breaks and bold
+                        aiMessageDiv.innerHTML = tmpPromptResponse
+                            .replace(/\n/g, '<br>')
+                            .replace(/\*\s*(.*?)\s*\*/g, '<strong>$1</strong>');
+                    }
+                    
                     messagesEndRef.scrollIntoView({ behavior: 'smooth' });
                 }
 
