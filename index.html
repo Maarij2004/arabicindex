@@ -319,6 +319,9 @@
                 // Check if the response is in Arabic and apply RTL styling
                 if (isArabic(content)) {
                     messageDiv.classList.add('rtl');
+                    
+                    // Clean any remaining English words (except allowed patterns)
+                    messageDiv.innerHTML = cleanArabicResponse(messageDiv.innerHTML);
                 }
             } else {
                 messageDiv.textContent = content;
@@ -327,6 +330,40 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             return messageDiv;
+        }
+
+        function cleanArabicResponse(text) {
+            // Patterns to keep (email, phone, websites, etc.)
+            const allowedPatterns = [
+                /[\w.-]+@[\w.-]+\.\w+/g, // emails
+                /(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/g, // phone numbers
+                /(?:https?:\/\/)?(?:www\.)?[\w.-]+\.[a-z]{2,}(?:\/\S*)?/gi // websites
+            ];
+            
+            // Find all allowed patterns in the text
+            const allowedMatches = [];
+            allowedPatterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    allowedMatches.push(match[0]);
+                }
+            });
+            
+            // Replace English words but preserve allowed patterns
+            let cleanedText = text;
+            allowedMatches.forEach(match => {
+                cleanedText = cleanedText.replace(match, `{{${match}}}`);
+            });
+            
+            // Remove remaining English words (basic Latin alphabet)
+            cleanedText = cleanedText.replace(/[a-zA-Z]+/g, '');
+            
+            // Restore allowed patterns
+            allowedMatches.forEach(match => {
+                cleanedText = cleanedText.replace(`{{${match}}}`, match);
+            });
+            
+            return cleanedText;
         }
 
         function formatContent(text) {
@@ -399,7 +436,8 @@
                     },
                     body: JSON.stringify({ 
                         prompt,
-                        format: 'structured' // Tell the API you want structured response
+                        format: 'structured', // Tell the API you want structured response
+                        language: isArabic(prompt) ? 'arabic' : 'english' // Tell API to respond in Arabic if prompt is Arabic
                     })
                 });
 
@@ -431,6 +469,8 @@
                     // Check if the response is in Arabic and apply RTL styling
                     if (isArabic(fullResponse)) {
                         aiMessageDiv.classList.add('rtl');
+                        // Clean any remaining English words (except allowed patterns)
+                        aiMessageDiv.innerHTML = cleanArabicResponse(aiMessageDiv.innerHTML);
                     } else {
                         aiMessageDiv.classList.remove('rtl');
                     }
