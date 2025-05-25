@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Almassa AI Assistant</title>
+    <title>مساعد الذكاء الاصطناعي ألمسة</title>
     <style>
         * {
             margin: 0;
@@ -277,16 +277,16 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h1>Almassa IT AI Assistant</h1>
+            <h1>مساعد الذكاء الاصطناعي ألمسة</h1>
             <div class="status-indicator">
                 <div class="online-dot"></div>
-                <span>Online</span>
+                <span>متصل</span>
             </div>
         </div>
 
         <div class="chat-messages" id="chatMessages">
             <div class="ai-message message">
-                Hello! How can I assist you today?
+                مرحبًا! كيف يمكنني مساعدتك اليوم؟
             </div>
         </div>
 
@@ -303,7 +303,7 @@
                 <textarea 
                     id="promptInput" 
                     rows="1"
-                    placeholder="Type your message..."
+                    placeholder="اكتب رسالتك..."
                 ></textarea>
                 <button id="sendButton">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -326,7 +326,7 @@
 
         // Initialize chat history
         let chatHistory = [
-            { sender: 'ai', message: 'Hello! How can I assist you today?' }
+            { sender: 'ai', message: 'مرحبًا! كيف يمكنني مساعدتك اليوم؟' }
         ];
 
         // Auto-resize textarea
@@ -486,7 +486,7 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                createMessage('Error communicating with the server.');
+                createMessage('حدث خطأ في التواصل مع الخادم.');
             } finally {
                 // Re-enable button
                 sendButton.disabled = false;
